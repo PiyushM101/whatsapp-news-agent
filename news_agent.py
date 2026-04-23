@@ -120,9 +120,20 @@ No explanation. Just the JSON array.
     res.raise_for_status()
 
     raw = res.json()["content"][0]["text"].strip()
+    raw = raw.replace("```json", "").replace("```", "").strip()
     start = raw.find("[")
     end   = raw.rfind("]") + 1
-    indices = json.loads(raw[start:end])
+    if start == -1 or end == 0 or end <= start:
+        print("Error parsing Claude's response: no JSON array found. Returning empty list.")
+        return []
+
+    try:
+        indices = json.loads(raw[start:end])
+        if not isinstance(indices, list) or not all(isinstance(i, int) for i in indices):
+            raise ValueError("Expected a list of integers")
+    except (json.JSONDecodeError, ValueError) as e:
+        print(f"Error parsing Claude's response: {e}. Returning empty list.")
+        return []
 
     picked = []
     for i in indices:
@@ -159,8 +170,24 @@ def send_topic_messages(filtered_by_topic):
             lines.append("")
 
         message = "\n".join(lines).strip()
-        send_whatsapp_message(message)
-        time.sleep(1)  # small delay between messages
+
+        chunks = []
+        current = ""
+        for line in message.split("\n"):
+            if len(current) + len(line) + 1 > 1500:
+                chunks.append(current.strip())
+                current = line + "\n"
+            else:
+                current += line + "\n"
+        if current.strip():
+            chunks.append(current.strip())
+
+        for i, chunk in enumerate(chunks, start=1):
+            body = chunk
+            if len(chunks) > 1:
+                body += f"\n\n({i}/{len(chunks)})"
+            send_whatsapp_message(body)
+            time.sleep(1)  # small delay between messages
 
 
 # ── Main ──────────────────────────────────────────────────
