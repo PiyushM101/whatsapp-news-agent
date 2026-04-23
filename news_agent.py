@@ -163,7 +163,7 @@ def send_topic_messages(filtered_by_topic):
 
         message = "\n".join(lines).strip()
         send_whatsapp_message(message)
-        time.sleep(1)  # small delay between messages
+        time.sleep(60)  # small delay between messages
 
 
 # ── Main ──────────────────────────────────────────────────
