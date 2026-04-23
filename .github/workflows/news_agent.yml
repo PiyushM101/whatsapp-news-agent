@@ -1,10 +1,20 @@
 name: Daily News Agent
 
 on:
+  workflow_dispatch:
+    inputs:
+      topic_index:
+        description: "Topic index to run (0-6). Leave empty to run all."
+        required: false
   schedule:
-    # Runs every day at 8:00 AM EST (13:00 UTC)
-    - cron: "0 13 * * *"
-  workflow_dispatch: # lets you trigger it manually too
+    # 7 topics, 1 hour apart, starting 8:00am EST (13:00 UTC)
+    - cron: "0 13 * * *"   # 8:00am  EST — 🧠 LLMs & Foundation Models
+    - cron: "0 14 * * *"   # 9:00am  EST — 📱 AI Products & Apps
+    - cron: "0 15 * * *"   # 10:00am EST — 💰 Startups & Venture Capital
+    - cron: "0 16 * * *"   # 11:00am EST — 🏦 Fintech & Payments
+    - cron: "0 17 * * *"   # 12:00pm EST — ⚖️ AI Policy & Regulation
+    - cron: "0 18 * * *"   # 1:00pm  EST — ☁️ AI Infrastructure
+    - cron: "0 19 * * *"   # 2:00pm  EST — 🇺🇸 US Visas
 
 jobs:
   send-news:
@@ -22,6 +32,22 @@ jobs:
       - name: Install dependencies
         run: pip install requests
 
+      - name: Determine topic index
+        id: topic
+        run: |
+          HOUR=$(date -u +%H)
+          if   [ "$HOUR" = "13" ]; then INDEX=0
+          elif [ "$HOUR" = "14" ]; then INDEX=1
+          elif [ "$HOUR" = "15" ]; then INDEX=2
+          elif [ "$HOUR" = "16" ]; then INDEX=3
+          elif [ "$HOUR" = "17" ]; then INDEX=4
+          elif [ "$HOUR" = "18" ]; then INDEX=5
+          elif [ "$HOUR" = "19" ]; then INDEX=6
+          else INDEX="${{ github.event.inputs.topic_index }}"
+          fi
+          echo "index=$INDEX" >> $GITHUB_OUTPUT
+          echo "Running topic index: $INDEX"
+
       - name: Run news agent
         env:
           NEWSAPI_KEY:            ${{ secrets.NEWSAPI_KEY }}
@@ -30,4 +56,5 @@ jobs:
           TWILIO_AUTH_TOKEN:      ${{ secrets.TWILIO_AUTH_TOKEN }}
           TWILIO_WHATSAPP_FROM:   ${{ secrets.TWILIO_WHATSAPP_FROM }}
           TWILIO_WHATSAPP_TO:     ${{ secrets.TWILIO_WHATSAPP_TO }}
+          TOPIC_INDEX:            ${{ steps.topic.outputs.index }}
         run: python news_agent.py
