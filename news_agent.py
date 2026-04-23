@@ -32,7 +32,7 @@ Prioritize news that is insightful, career-relevant, or signals an important ind
 Skip generic hype pieces.
 """
 
-FETCH_PER_TOPIC = 10  # fetch more so Claude has options
+FETCH_PER_TOPIC = 15  # fetch more so Claude can deduplicate and still have 5 unique stories
 TOP_PER_TOPIC   = 5   # top N to send per topic
 
 TOPIC_LABELS = {
@@ -98,8 +98,13 @@ Here are today's articles for this topic (numbered):
 
 {headlines}
 
-Pick the top {TOP_PER_TOPIC} most relevant and interesting articles for this user.
-Return ONLY a JSON array of article numbers, like: [2, 4, 5, 7, 9]
+Rules:
+1. If multiple articles cover the same story, pick only the best one. Skip the rest.
+2. Pick up to {TOP_PER_TOPIC} articles that cover DIFFERENT stories.
+3. Rank them by relevance and importance to the user. Most important first.
+4. Skip generic hype, press releases, and repetitive coverage.
+
+Return ONLY a JSON array of article numbers in ranked order, like: [3, 7, 1, 9, 5]
 No explanation. Just the JSON array.
 """
 
@@ -120,20 +125,9 @@ No explanation. Just the JSON array.
     res.raise_for_status()
 
     raw = res.json()["content"][0]["text"].strip()
-    raw = raw.replace("```json", "").replace("```", "").strip()
     start = raw.find("[")
     end   = raw.rfind("]") + 1
-    if start == -1 or end == 0 or end <= start:
-        print("Error parsing Claude's response: no JSON array found. Returning empty list.")
-        return []
-
-    try:
-        indices = json.loads(raw[start:end])
-        if not isinstance(indices, list) or not all(isinstance(i, int) for i in indices):
-            raise ValueError("Expected a list of integers")
-    except (json.JSONDecodeError, ValueError) as e:
-        print(f"Error parsing Claude's response: {e}. Returning empty list.")
-        return []
+    indices = json.loads(raw[start:end])
 
     picked = []
     for i in indices:
@@ -170,24 +164,8 @@ def send_topic_messages(filtered_by_topic):
             lines.append("")
 
         message = "\n".join(lines).strip()
-
-        chunks = []
-        current = ""
-        for line in message.split("\n"):
-            if len(current) + len(line) + 1 > 1500:
-                chunks.append(current.strip())
-                current = line + "\n"
-            else:
-                current += line + "\n"
-        if current.strip():
-            chunks.append(current.strip())
-
-        for i, chunk in enumerate(chunks, start=1):
-            body = chunk
-            if len(chunks) > 1:
-                body += f"\n\n({i}/{len(chunks)})"
-            send_whatsapp_message(body)
-            time.sleep(1)  # small delay between messages
+        send_whatsapp_message(message)
+        time.sleep(1)  # small delay between messages
 
 
 # ── Main ──────────────────────────────────────────────────
