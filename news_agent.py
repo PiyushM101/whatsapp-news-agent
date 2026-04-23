@@ -111,7 +111,14 @@ No explanation. Just the JSON array.
     raw = res.json()["content"][0]["text"].strip()
     # Strip markdown fences if present
     raw = raw.replace("```json", "").replace("```", "").strip()
-    indices = json.loads(raw)
+    
+    try:
+        indices = json.loads(raw)
+        if not isinstance(indices, list) or not all(isinstance(i, int) for i in indices):
+            raise ValueError("Invalid response: expected a list of integers")
+    except (json.JSONDecodeError, ValueError) as e:
+        print(f"Error parsing Claude's response: {e}. Returning empty list.")
+        return []
 
     # indices are 1-based
     picked = []
