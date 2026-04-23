@@ -12,20 +12,29 @@ TWILIO_TO       = os.environ["TWILIO_WHATSAPP_TO"]     # e.g. whatsapp:+1XXXXXXX
 
 # Edit these to match your interests
 TOPICS = [
-    "artificial intelligence",
-    "fintech",
-    "startup funding",
-    "product management",
-    "MBA careers",
+    "LLM foundation models OpenAI Anthropic Google Meta",
+    "LLM foundation models",
+    "AI products apps launches",
+    "Startups funding venture capital",
+    "Fintech banking payments",
+    "AI policy regulation",
+    "AI infrastructure cloud compute chips"
+    "H1B and F1 visa US"
+    
 ]
 
 ABOUT_ME = """
-I am an MBA student at NYU Stern. I focus on AI, fintech, and tech product management.
-I worked at Revolut, OnePay, and Flipkart. I want news that is career-relevant or interesting to me.
+I am an MBA student at NYU Stern specializing in AI and tech product management.
+I previously worked at Revolut, OnePay, and Flipkart in product and strategy roles.
+I want to pursue a career in the US tech industry, ideally in AI product or strategy roles.
+I care most about: LLMs and foundation models, AI product launches, AI startups getting funded,
+AI applied to fintech AI infrastructure, and US AI policy and regulation.
+Prioritize news that is insightful, career-relevant, or signals an important industry shift.
+Skip generic hype pieces.
 """
 
 MAX_ARTICLES_PER_TOPIC = 5   # articles fetched per topic
-MAX_FINAL_ARTICLES     = 7   # articles sent to WhatsApp
+MAX_FINAL_ARTICLES     = 30   # articles sent to WhatsApp
 
 
 # ── Step 1: Fetch news ────────────────────────────────────
@@ -55,6 +64,7 @@ def fetch_news(topics):
                     "description": a["description"],
                     "url":         url_,
                     "source":      a.get("source", {}).get("name", "Unknown"),
+                    "topic":       topic,
                 })
 
     return articles
@@ -111,13 +121,33 @@ No explanation. Just the JSON array.
     return picked
 
 
+# ── Topic display names ───────────────────────────────────
+TOPIC_LABELS = {
+    "LLM foundation models OpenAI Anthropic Google Meta": "🧠 LLMs & Foundation Models",
+    "LLM foundation models": "🧠 LLMs & Foundation Models",
+    "AI products apps launches": "📱 AI Products & Apps",
+    "Startups funding venture capital": "💰 Startups & Venture Capital",
+    "Fintech banking payments": "🏦 Fintech & Payments",
+    "AI policy regulation": "⚖️ AI Policy & Regulation",
+    "AI infrastructure cloud compute chips": "☁️ AI Infrastructure",
+    "H1B and F1 visa US": "🇺🇸 US Visas (H1B & F1)",
+}
+
 # ── Step 3: Send to WhatsApp ──────────────────────────────
 def send_whatsapp(articles):
+    # Group articles by topic
+    grouped = {}
+    for a in articles:
+        label = TOPIC_LABELS.get(a["topic"], a["topic"])
+        grouped.setdefault(label, []).append(a)
+
     lines = ["🗞 *Your Daily News Brief*\n"]
-    for i, a in enumerate(articles, 1):
-        lines.append(f"*{i}. {a['title']}*")
-        lines.append(f"_{a['source']}_")
-        lines.append(a["url"])
+    for label, items in grouped.items():
+        lines.append(f"*{label}*")
+        for a in items:
+            lines.append(f"• {a['title']}")
+            lines.append(f"  _{a['source']}_")
+            lines.append(f"  {a['url']}")
         lines.append("")
 
     message = "\n".join(lines).strip()
