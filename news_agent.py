@@ -13,7 +13,6 @@ TWILIO_TO       = os.environ["TWILIO_WHATSAPP_TO"]
 
 TOPICS = [
     "LLM foundation models OpenAI Anthropic Google Meta",
-    "LLM foundation models",
     "AI products apps launches",
     "Startups funding venture capital",
     "Fintech banking payments",
@@ -32,12 +31,11 @@ Prioritize news that is insightful, career-relevant, or signals an important ind
 Skip generic hype pieces.
 """
 
-FETCH_PER_TOPIC = 15  # fetch more so Claude can deduplicate and still have 5 unique stories
-TOP_PER_TOPIC   = 5   # top N to send per topic
+FETCH_PER_TOPIC = 15
+TOP_PER_TOPIC   = 5
 
 TOPIC_LABELS = {
     "LLM foundation models OpenAI Anthropic Google Meta": "🧠 LLMs & Foundation Models",
-    "LLM foundation models":                              "🧠 LLMs & Foundation Models",
     "AI products apps launches":                         "📱 AI Products & Apps",
     "Startups funding venture capital":                  "💰 Startups & Venture Capital",
     "Fintech banking payments":                          "🏦 Fintech & Payments",
@@ -170,8 +168,17 @@ def send_topic_messages(filtered_by_topic):
 
 # ── Main ──────────────────────────────────────────────────
 if __name__ == "__main__":
+    # TOPIC_INDEX tells us which single topic to run (0-based)
+    # If not set, run all topics at once
+    topic_index = os.environ.get("TOPIC_INDEX")
+
+    if topic_index is not None:
+        selected = [TOPICS[int(topic_index)]]
+    else:
+        selected = TOPICS
+
     print("Fetching news by topic...")
-    by_topic = fetch_news_by_topic(TOPICS)
+    by_topic = fetch_news_by_topic(selected)
     for t, arts in by_topic.items():
         print(f"  {TOPIC_LABELS.get(t, t)}: {len(arts)} articles")
 
